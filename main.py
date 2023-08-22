@@ -79,9 +79,15 @@ def create_table(table_info: dict):
         table_name = table_info["table_name"]
         columns = table_info["columns"]
 
-        column_definitions = ", ".join([f"{col['name']} {col['type']} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci" for col in columns])
+        column_definitions = ", ".join([f"{col['name']} {col['type']}" for col in columns])
         query = f"CREATE TABLE {table_name} ({column_definitions})"
         cursor.execute(query)
+
+        # Add COLLATE for specific columns
+        for col in columns:
+            if col['name'] == 'product_name' or col['name'] == 'date':
+                alter_query = f"ALTER TABLE {table_name} MODIFY COLUMN {col['name']} {col['type']} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+                cursor.execute(alter_query)
 
         # Commit the table creation
         conn.commit()
@@ -109,6 +115,9 @@ def create_table(table_info: dict):
         close_db_connection(conn)
         print("Error creating table:", err)
         raise HTTPException(status_code=500, detail=f"Error creating table: {err}")
+
+
+
 
 
 

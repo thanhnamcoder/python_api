@@ -7,12 +7,11 @@ app = FastAPI()
 
 def get_db_connection():
     db_config = {
-        'host': os.environ['MYSQL_HOST'],
-        'user': os.environ['MYSQL_USER'],
-        'password': os.environ['MYSQL_PASSWORD'],
-        'database': os.environ['MYSQL_DATABASE'],
+        'host': '103.97.126.24',
+        'user': 'beohbrrl_financial_freedom',
+        'password': 'nguyen2004nam',
+        'database': 'beohbrrl_financial_freedom',
         'charset': 'utf8mb4',
-        'collation': 'utf8mb4_general_ci'
     }
     conn = mysql.connector.connect(**db_config)
     return conn
@@ -214,6 +213,7 @@ def get_all_tables_and_data():
         close_db_connection(conn)
         print("Database Error:", err)
         raise HTTPException(status_code=500, detail="Error fetching all tables and data from the database")
+
 
 if __name__ == '__main__':
     import uvicorn

@@ -1,6 +1,5 @@
 from fastapi import FastAPI, HTTPException
 import mysql.connector
-import os
 
 
 app = FastAPI()
@@ -12,6 +11,7 @@ def get_db_connection():
         'password': 'nguyen2004nam',
         'database': 'beohbrrl_financial_freedom',
         'charset': 'utf8mb4',
+       'collation': 'utf8mb4_unicode_ci'
     }
     conn = mysql.connector.connect(**db_config)
     return conn
@@ -79,7 +79,7 @@ def create_table(table_info: dict):
         table_name = table_info["table_name"]
         columns = table_info["columns"]
 
-        column_definitions = ", ".join([f"{col['name']} {col['type']}" for col in columns])
+        column_definitions = ", ".join([f"{col['name']} {col['type']} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci" for col in columns])
         query = f"CREATE TABLE {table_name} ({column_definitions})"
         cursor.execute(query)
 
@@ -109,6 +109,7 @@ def create_table(table_info: dict):
         close_db_connection(conn)
         print("Error creating table:", err)
         raise HTTPException(status_code=500, detail=f"Error creating table: {err}")
+
 
 
 @app.get("/get_tables")

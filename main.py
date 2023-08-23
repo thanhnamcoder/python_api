@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 import sqlite3
 
+
 app = FastAPI()
 
 def get_db_connection():
@@ -9,6 +10,7 @@ def get_db_connection():
 
 def close_db_connection(conn):
     conn.close()
+
 
 @app.get("/get_data")
 def get_data():
@@ -60,51 +62,33 @@ def add_data(data: dict):
         print("Database Error:", err)
         raise HTTPException(status_code=500, detail="Error adding data to the database")
 
+
+        
 @app.post("/create_table")
-def create_table(table_info: dict):
+def create_table(data: dict):
     conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
-        table_name = table_info["table_name"]
-        columns = table_info["columns"]
+        table_name = data['table_name']
+        columns = data['columns']
 
-        column_definitions = ", ".join([f"{col['name']} {col['type']}" for col in columns])
-        query = f"CREATE TABLE {table_name} (id INTEGER PRIMARY KEY AUTOINCREMENT, {column_definitions})"
+        column_definitions = ', '.join([
+            f"{column['name']} {column['type']}" for column in columns
+        ])
+
+        query = f"CREATE TABLE IF NOT EXISTS {table_name} ({column_definitions})"
         cursor.execute(query)
 
-        # Add COLLATE for specific columns
-        for col in columns:
-            if col['name'] == 'product_name' or col['name'] == 'date':
-                alter_query = f"ALTER TABLE {table_name} ALTER COLUMN {col['name']} SET DATA TYPE {col['type']} COLLATE utf8mb4_unicode_ci"
-                cursor.execute(alter_query)
-
-        # Commit the table creation
         conn.commit()
-
-        # Transfer data from order_management to the new table
-        transfer_query = f"INSERT INTO {table_name} SELECT * FROM order_management"
-        cursor.execute(transfer_query)
-
-        # Commit the data transfer
-        conn.commit()
-
-        # Clear data from order_management
-        clear_query = "DELETE FROM order_management"
-        cursor.execute(clear_query)
-
-        # Commit the deletion
-        conn.commit()
-
         cursor.close()
         close_db_connection(conn)
 
-        return {"message": f"Table '{table_name}' created, data transferred, and old data cleared successfully"}
+        return {"message": "Table created successfully"}
     except sqlite3.Error as err:
-        cursor.close()
-        close_db_connection(conn)
-        print("Error creating table:", err)
-        raise HTTPException(status_code=500, detail=f"Error creating table: {err}")
+        print("Database Error:", err)
+        raise HTTPException(status_code=500, detail="Error creating table")
+
 
 
 
@@ -114,23 +98,23 @@ def create_table(table_info: dict):
 
 @app.get("/get_tables")
 def get_tables():
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
-        cursor.execute("SHOW TABLES")
-        all_table_names = [table[0] for table in cursor.fetchall()]
-        
-        # Filter out the "order_management" table
-        table_names = [table_name for table_name in all_table_names if table_name != "order_management"]
+    try:
+        query = "SELECT name FROM sqlite_master WHERE type='table';"
+        cursor.execute(query)
+
+        tables = [table[0] for table in cursor.fetchall()]
 
         cursor.close()
-        conn.close()
+        close_db_connection(conn)
 
-        return {"tables": table_names}
+        return {"tables": tables}
     except sqlite3.Error as err:
         print("Database Error:", err)
-        raise HTTPException(status_code=500, detail="Error fetching tables from the database")
+        raise HTTPException(status_code=500, detail="Error getting tables")
+
 
 @app.delete("/delete_table/{table_name}")
 def delete_table(table_name: str):
@@ -214,6 +198,65 @@ def get_all_tables_and_data():
         close_db_connection(conn)
         print("Database Error:", err)
         raise HTTPException(status_code=500, detail="Error fetching all tables and data from the database")
+
+
+
+@app.post('/create_table_and_copy_data')
+def create_table_and_copy_data(request: dict):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Tạo bảng mới
+        new_table_name = request.get("new_table_name")
+        new_table_columns = [
+            {"name": "id", "type": "INTEGER PRIMARY KEY"},
+            {"name": "product_name", "type": "TEXT"},
+            {"name": "date", "type": "TEXT"},
+            {"name": "must_have", "type": "INTEGER"},
+            {"name": "nice_to_have", "type": "INTEGER"},
+            {"name": "wasted", "type": "INTEGER"}
+        ]
+        column_definitions = ', '.join([
+            f"{column['name']} {column['type']}" for column in new_table_columns
+        ])
+        create_table_query = f"CREATE TABLE IF NOT EXISTS {new_table_name} ({column_definitions})"
+        cursor.execute(create_table_query)
+        conn.commit()
+
+        # Chuyển dữ liệu từ bảng cũ sang bảng mới
+        transfer_data_query = f"INSERT INTO {new_table_name} SELECT * FROM order_management"
+        cursor.execute(transfer_data_query)
+        conn.commit()
+
+        cursor.close()
+        close_db_connection(conn)
+
+        return {"message": "Table created and data transferred successfully"}
+    except sqlite3.Error as err:
+        print("Database Error:", err)
+        raise HTTPException(status_code=500, detail="Error creating table and transferring data")
+
+
+@app.delete('/delete_old_data')
+def delete_old_data():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Xóa dữ liệu của bảng cũ
+        delete_query = "DELETE FROM order_management"  # Thay thế old_table_name bằng tên thực tế của bảng cũ
+        cursor.execute(delete_query)
+        conn.commit()
+
+        cursor.close()
+        close_db_connection(conn)
+
+        return {"message": "Old data deleted successfully"}
+    except sqlite3.Error as err:
+        print("Database Error:", err)
+        raise HTTPException(status_code=500, detail="Error deleting old data")
+
 
 
 if __name__ == '__main__':

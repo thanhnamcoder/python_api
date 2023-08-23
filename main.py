@@ -159,45 +159,8 @@ def get_table_data(table_name: str):
         print("Database Error:", err)
         raise HTTPException(status_code=500, detail=f"Error fetching data from table '{table_name}': {err}")
 
-@app.get("/check_api")
-def check_connection():
-    try:
-        conn = get_db_connection()
-        close_db_connection(conn)
-        return {"message": "Connected to the database"}
-    except sqlite3.Error as err:
-        return {"message": "Failed to connect to the database"}
+
     
-@app.get("/get_all_tables_and_data")
-def get_all_tables_and_data():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    try:
-        cursor.execute("SHOW TABLES")
-        all_table_names = [table[0] for table in cursor.fetchall()]
-
-        all_data = {}
-
-        for table_name in all_table_names:
-            if table_name != "order_management":
-                query = f"SELECT * FROM {table_name}"
-                cursor.execute(query)
-
-                rows = cursor.fetchall()
-
-                data = [{'ID': row[0], 'Product_Name': row[1], 'Date': row[2], 'Must_Have': row[3], 'Nice_To_Have': row[4], 'Wasted': row[5]} for row in rows]
-                all_data[table_name] = data
-
-        cursor.close()
-        close_db_connection(conn)
-
-        return all_data
-    except sqlite3.Error as err:
-        cursor.close()
-        close_db_connection(conn)
-        print("Database Error:", err)
-        raise HTTPException(status_code=500, detail="Error fetching all tables and data from the database")
 
 
 
